@@ -1,0 +1,211 @@
+/* =============================================================================
+   E-COMMERCE 360° BUSINESS INTELLIGENCE PLATFORM
+   Power BI Semantic Model DAX Measures Library
+   Author: Data Analytics Specialist
+   Formatting: Currency in BRL (R$ #,##0.00), Percentages in 0.00%
+============================================================================= */
+
+// =============================================================================
+// FOLDER: 01. Executive Financial & Sales KPIs
+// =============================================================================
+
+Total Revenue = 
+SUM(FactOrderItems[price])
+
+Total Freight = 
+SUM(FactOrderItems[freight_value])
+
+Gross Merchandise Value = 
+[Total Revenue] + [Total Freight]
+
+Total Orders = 
+DISTINCTCOUNT(FactOrders[order_id])
+
+Total Items Sold = 
+COUNTROWS(FactOrderItems)
+
+Average Order Value = 
+DIVIDE( [Total Revenue], [Total Orders], 0 )
+
+Average Items per Order = 
+DIVIDE( [Total Items Sold], [Total Orders], 0 )
+
+Average Item Price = 
+DIVIDE( [Total Revenue], [Total Items Sold], 0 )
+
+Freight to Revenue % = 
+DIVIDE( [Total Freight], [Total Revenue], 0 )
+
+
+// =============================================================================
+// FOLDER: 02. Customer Analytics & Retention Measures
+// =============================================================================
+
+Total Unique Customers = 
+DISTINCTCOUNT(DimCustomers[customer_unique_id])
+
+Repeat Customers = 
+CALCULATE(
+    DISTINCTCOUNT(DimCustomers[customer_unique_id]),
+    FILTER(
+        VALUES(DimCustomers[customer_unique_id]),
+        CALCULATE(DISTINCTCOUNT(FactOrders[order_id]), FactOrders[order_status] = "delivered") > 1
+    )
+)
+
+Single Order Customers = 
+[Total Unique Customers] - [Repeat Customers]
+
+Repeat Customer % = 
+DIVIDE( [Repeat Customers], [Total Unique Customers], 0 )
+
+Single Order % = 
+DIVIDE( [Single Order Customers], [Total Unique Customers], 0 )
+
+Average Customer Lifetime Spend = 
+DIVIDE( [Total Revenue], [Total Unique Customers], 0 )
+
+Average Orders per Customer = 
+DIVIDE( [Total Orders], [Total Unique Customers], 0 )
+
+
+// =============================================================================
+// FOLDER: 03. Logistics, Delivery & SLA Compliance Measures
+// =============================================================================
+
+Delivered Orders = 
+CALCULATE(
+    [Total Orders],
+    FactOrders[order_status] = "delivered",
+    NOT ISBLANK(FactOrders[order_delivered_customer_date])
+)
+
+On-Time Orders = 
+CALCULATE(
+    [Total Orders],
+    FactOrders[order_status] = "delivered",
+    FactOrders[delivery_status] = "On-Time"
+)
+
+Late Orders = 
+CALCULATE(
+    [Total Orders],
+    FactOrders[order_status] = "delivered",
+    FactOrders[delivery_status] = "Late"
+)
+
+On-Time Delivery % = 
+DIVIDE( [On-Time Orders], [Delivered Orders], 0 )
+
+Late Delivery % = 
+DIVIDE( [Late Orders], [Delivered Orders], 0 )
+
+Average Delivery Lead Time (Days) = 
+CALCULATE(
+    AVERAGE(FactOrders[delivery_lead_time_days]),
+    FactOrders[order_status] = "delivered"
+)
+
+Average Days vs Estimated = 
+CALCULATE(
+    AVERAGE(FactOrders[delivery_vs_estimated_days]),
+    FactOrders[order_status] = "delivered"
+)
+
+
+// =============================================================================
+// FOLDER: 04. Customer Review & Satisfaction Measures
+// =============================================================================
+
+Total Reviews = 
+COUNTROWS(FactReviews)
+
+Average Review Score = 
+AVERAGE(FactReviews[review_score])
+
+5 Star Reviews = 
+CALCULATE(COUNTROWS(FactReviews), FactReviews[review_score] = 5)
+
+1 Star Reviews = 
+CALCULATE(COUNTROWS(FactReviews), FactReviews[review_score] = 1)
+
+Positive Review % = 
+DIVIDE(
+    CALCULATE(COUNTROWS(FactReviews), FactReviews[review_score] IN {4, 5}),
+    [Total Reviews],
+    0
+)
+
+Negative Review % = 
+DIVIDE(
+    CALCULATE(COUNTROWS(FactReviews), FactReviews[review_score] IN {1, 2}),
+    [Total Reviews],
+    0
+)
+
+
+// =============================================================================
+// FOLDER: 05. Time Intelligence & Period-Over-Period Analysis
+// =============================================================================
+
+Revenue Prior Month = 
+CALCULATE(
+    [Total Revenue],
+    DATEADD(DimDate[date_key], -1, MONTH)
+)
+
+Revenue MoM Growth = 
+[Total Revenue] - [Revenue Prior Month]
+
+Revenue MoM Growth % = 
+DIVIDE( [Revenue MoM Growth], [Revenue Prior Month], 0 )
+
+Orders Prior Month = 
+CALCULATE(
+    [Total Orders],
+    DATEADD(DimDate[date_key], -1, MONTH)
+)
+
+Orders MoM Growth % = 
+DIVIDE( [Total Orders] - [Orders Prior Month], [Orders Prior Month], 0 )
+
+Revenue YTD = 
+TOTALYTD([Total Revenue], DimDate[date_key])
+
+Revenue 3M Moving Average = 
+CALCULATE(
+    AVERAGEX(
+        DATESINPERIOD(DimDate[date_key], MAX(DimDate[date_key]), -3, MONTH),
+        [Total Revenue]
+    )
+)
+
+
+// =============================================================================
+// FOLDER: 06. Dynamic Titles & UI Visual Formatting
+// =============================================================================
+
+Dynamic Sales Title = 
+"Executive Sales Performance: " & 
+IF(
+    ISFILTERED(DimProducts[category_name_en]),
+    SELECTEDVALUE(DimProducts[category_name_en]),
+    "All Product Categories"
+) & 
+" (" & FORMAT([Total Revenue], "R$ #,##0") & " BRL)"
+
+Delivery Status KPI Color = 
+SWITCH(
+    TRUE(),
+    [Late Delivery %] <= 0.08, "#28a745", // Green: Under 8% late
+    [Late Delivery %] <= 0.12, "#ffc107", // Amber: 8% - 12% late
+    "#dc3545"                             // Red: Critical > 12% late
+)
+
+Review Score KPI Color = 
+SWITCH(
+    TRUE(),
+    [Average Review Score] >= 4.2, "#28a745", // Excellent
+    [Average Review Score] >= 3.8, "#ffc107", // Acceptable
+    "#dc3545"                                // At Risk
+)

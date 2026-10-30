@@ -1,0 +1,19 @@
+# Python Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.ipynb_checkpoints/
+
+# Raw Large Datasets (Follow Kaggle ShareAlike attribution & Git best practices)
+data/raw/
+*.csv.zip
+
+# Temporary files and logs
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
