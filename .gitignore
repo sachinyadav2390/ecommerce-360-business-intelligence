@@ -15,5 +15,6 @@ data/raw/
 # Temporary files and logs
 *.log
 *.tmp
+*.db
 .DS_Store
 Thumbs.db
